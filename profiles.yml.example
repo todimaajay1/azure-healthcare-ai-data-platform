@@ -1,0 +1,13 @@
+# dbt profiles configuration template
+# Copy this file to ~/.dbt/profiles.yml and configure as needed
+
+data_lakehouse_profile:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: data_lakehouse.duckdb  # Path to DuckDB database file
+      schema: main
+      extensions:
+        - parquet
+        - httpfs  # For reading from remote sources if needed
