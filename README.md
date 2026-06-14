@@ -1,316 +1,250 @@
-# Enterprise-Grade Data Lakehouse
+# Azure Healthcare AI Data Platform
 
-## Overview
-
-This is an **Enterprise-Grade Data Lakehouse** designed for high-velocity financial analytics, built with modern open-source technologies. The architecture emphasizes scalability, data integrity, and real-time data processing capabilities suitable for production financial data workloads.
-
-The lakehouse implements the **Medallion Architecture** (Bronze → Silver → Gold) to ensure data quality and transformation at each layer, enabling reliable analytics and machine learning use cases.
+End-to-end healthcare data platform built on Azure and Databricks, implementing medallion architecture with Unity Catalog governance, HIPAA-compliant data handling, and RAG-based AI retrieval for clinical decision support.
 
 ## Architecture
+[HL7 FHIR APIs / EHR Systems / Medical IoT]
+                 ↓
+    [Azure Event Hubs / IoT Hub]
+                 ↓
+     [Databricks Auto Loader]
+                 ↓
+   [Bronze: Raw Clinical Events]
+                 ↓
+[Delta Live Tables: Quality Checks]
+                 ↓
+[Silver: Validated Patient Data]
+                 ↓
+ [dbt + PySpark: Gold Aggregates]
+                 ↓
+[Unity Catalog: RLS + PII Masking]
+                 ↓
+[Azure AI Search: RAG Vector Index]
+                 ↓
+[Power BI / ML Models / Reverse ETL]
 
-### Medallion Architecture Layers
 
-1. **Bronze Layer** (`data/bronze/`)
-   - Raw, unprocessed data ingested from external sources
-   - Stored as Parquet files for efficient columnar storage
-   - Preserves all original data without modifications
-   - Enables full historical data replay and auditing
+## Tech Stack
 
-2. **Silver Layer** (`data/silver/`)
-   - Cleaned and validated data that passed quality checks
-   - Data that meets business rules and integrity constraints
-   - Ready for downstream transformations and analytics
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Ingestion** | Azure Event Hubs, IoT Hub, FHIR APIs | Real-time + batch clinical data |
+| **Compute** | Databricks (DBR 13.3 LTS+) | Unified analytics & ML |
+| **Storage** | Delta Lake on ADLS Gen2 | ACID transactions, time travel |
+| **Governance** | Unity Catalog | Fine-grained access, HIPAA audit |
+| **Transform** | dbt + PySpark | Gold layer business models |
+| **AI Retrieval** | Azure AI Search | RAG for clinical AI assistants |
+| **Reverse ETL** | Azure Data Factory + SQL | Sync to operational EHR |
+| **IaC** | Terraform | Reproducible infrastructure |
+| **CI/CD** | Azure DevOps | Automated testing & deployment |
+| **Quality** | Great Expectations + DLT | Data validation & anomaly detection |
 
-3. **Gold Layer** (`data/gold/`)
-   - Aggregated and business-level datasets
-   - Optimized for analytics, reporting, and ML features
-   - Contains business-specific transformations and metrics
+## Key Features
 
-### Technology Stack
+### 🔒 HIPAA Compliance & Governance
+- **Encryption**: ADLS encryption at rest, TLS 1.3 in transit
+- **PII Masking**: Dynamic masking via Unity Catalog functions
+- **Row-Level Security**: Patient data access restricted by provider ID
+- **Audit Logging**: Complete data lineage and access tracking
+- **Data Retention**: Automated lifecycle policies per HIPAA requirements
 
-- **DuckDB**: High-performance analytical database for OLAP workloads
-- **dbt (Data Build Tool)**: Transformations and data modeling
-- **Python**: Data ingestion, quality checks, and orchestration
-- **PostgreSQL**: Metadata management and orchestration state
-- **Docker**: Containerized infrastructure for consistent deployments
-- **Yahoo Finance API**: Real-time financial market data source
-- **Parquet**: Efficient columnar storage format
+### 🤖 AI & RAG Integration
+- **Vector Indexing**: Clinical notes and research papers indexed into Azure AI Search
+- **RAG Retrieval**: Semantic search for AI-powered clinical decision support
+- **ML Feature Store**: Patient features for readmission prediction models
+- **Model Monitoring**: MLflow tracking for model drift and performance
+
+### 🔄 Reverse ETL
+- **Operational Sync**: Gold layer patient risk scores synced back to EHR via Azure Data Factory
+- **Real-Time Alerts**: Critical lab values trigger immediate provider notifications
+- **CRM Integration**: Patient engagement data synced to Salesforce
 
 ## Project Structure
-
-```
-.
-├── data/
-│   ├── bronze/          # Raw ingested data (Parquet files)
-│   ├── silver/          # Validated and cleaned data
-│   └── gold/            # Business-ready aggregated data
-├── models/
-│   ├── staging/         # dbt staging models
-│   │   └── stg_stock_data.sql
-│   ├── silver/          # dbt silver layer models
-│   │   └── silver_stock_data.sql
-│   └── gold/            # dbt gold layer models
-│       ├── gold_daily_metrics.sql
-│       └── gold_symbol_summary.sql
-├── tests/               # dbt data quality tests
-│   ├── test_silver_data_quality.sql
-│   ├── test_logical_constraints.sql
-│   └── test_data_freshness.sql
+azure-healthcare-ai-data-platform/
+├── infrastructure/
+│   ├── terraform/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── unity_catalog.tf
+│   └── azure-devops/
+│       └── pipeline.yml
 ├── src/
-│   ├── ingest_data.py      # Data ingestion script
-│   ├── data_quality.py     # Quality checks
-│   └── orchestrate_pipeline.py  # Full pipeline orchestration
-├── dbt_project.yml      # dbt project configuration
-├── docker-compose.yml   # PostgreSQL metadata database
-├── setup.py             # Setup and installation script
-├── requirements.txt     # Python dependencies
-└── README.md           # This file
-```
+│   ├── ingestion/
+│   │   ├── fhir_api_client.py
+│   │   ├── iot_hub_consumer.py
+│   │   └── event_hubs_streaming.py
+│   ├── dlt/
+│   │   └── clinical_pipeline.py
+│   ├── dbt/
+│   │   ├── models/
+│   │   │   ├── staging/
+│   │   │   ├── silver/
+│   │   │   └── gold/
+│   │   └── tests/
+│   ├── rag/
+│   │   ├── vector_indexing.py
+│   │   └── retrieval.py
+│   ├── reverse_etl/
+│   │   └── sync_to_ehr.py
+│   └── governance/
+│       └── unity_catalog_setup.sql
+├── tests/
+│   ├── test_data_quality.py
+│   └── test_hipaa_compliance.py
+├── docs/
+│   ├── architecture.md
+│   ├── data_contracts.md
+│   └── hipaa_compliance.md
+└── README.md
 
-## Getting Started
+## Data Contracts
 
-### Prerequisites
+- **Bronze → Silver**: Schema enforced via Auto Loader; FHIR R4 validation; DLT expectations for null checks, timestamp ranges, and patient ID format
+- **Silver → Gold**: Business rules for episode grouping, risk stratification, and outcome metrics
+- **Gold → AI**: Vector embeddings generated for clinical notes; schema enforced for feature store
+- **Gold → Ops**: Reverse ETL syncs with watermark tracking; SLA: < 5 minutes for critical alerts
 
-- Python 3.9+
-- Docker and Docker Compose
-- dbt CLI (optional, can use dbt-duckdb directly)
-
-### Installation
-
-1. **Clone the repository** (or ensure you're in the project directory)
-
-2. **Run setup script** (recommended) or install manually:
-   ```bash
-   # Automated setup
-   python setup.py
-   
-   # Or manual installation
-   pip install -r requirements.txt
-   ```
-
-3. **Start the PostgreSQL metadata database:**
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Verify PostgreSQL is running:**
-   ```bash
-   docker-compose ps
-   ```
-
-### Usage
-
-#### 1. Data Ingestion (Bronze Layer)
-
-Ingest financial market data from Yahoo Finance:
+## Quick Start
 
 ```bash
-python src/ingest_data.py
-```
+# 1. Deploy Azure infrastructure
+cd infrastructure/terraform
+terraform init && terraform apply
 
-This will:
-- Fetch stock data for configured symbols (AAPL, GOOGL, MSFT, etc.)
-- Save data as Parquet files in `data/bronze/`
-- Include metadata such as ingestion timestamp and data source
+# 2. Start DLT pipeline
+databricks jobs run --job-id clinical_ingestion_pipeline
 
-**Customization:**
-- Edit `src/ingest_data.py` to modify symbols, time periods, or intervals
-- Default: 1 month of daily data for top 10 stocks
+# 3. Run dbt models
+cd src/dbt
+dbt run --target prod
 
-#### 2. Data Quality Checks
+# 4. Index for RAG
+python src/rag/vector_indexing.py
 
-Run quality checks before promoting data to Silver:
+# 5. Reverse ETL sync
+python src/reverse_etl/sync_to_ehr.py
 
-```bash
-python src/data_quality.py
-```
+Compliance & Security
+HIPAA: All PHI encrypted, access logged, minimum necessary principle enforced
+SOC-2: Audit trails, change management, automated data quality gates
+GDPR: Right to erasure implemented via Delta Lake time travel and vacuum operations
 
-Quality checks include:
-- **Null Value Validation**: Ensures critical columns (Open, High, Low, Close, Volume, symbol, date) have no nulls
-- **Data Type Validation**: Verifies expected data types for numeric columns
-- **Logical Range Checks**: Validates High >= Low, prices > 0
+License
+Built for enterprise healthcare analytics. Not for production clinical use without proper validation.
 
-#### 3. dbt Transformations
+## Step 1C: Create `infrastructure/terraform/main.tf`
+1. In the repo, click: **Add file** → **Create new file**
+2. In the filename box, type EXACTLY: `infrastructure/terraform/main.tf`
+3. **COPY the block below** and paste it in the file body
+4. Commit message: `Add Terraform IaC`
+5. Click: **Commit new file**
 
-Run dbt models to transform data through the layers:
+```hcl
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.75"
+    }
+    databricks = {
+      source  = "databricks/databricks"
+      version = "~> 1.28"
+    }
+  }
+}
 
-```bash
-# Install dbt-duckdb adapter
-pip install dbt-duckdb
+provider "azurerm" {
+  features {}
+  subscription_id = var.subscription_id
+}
 
-# Run all models (staging → silver → gold)
-dbt run
+provider "databricks" {
+  host  = azurerm_databricks_workspace.healthcare.workspace_url
+  token = var.databricks_token
+}
 
-# Or run specific layers
-dbt run --select staging
-dbt run --select silver
-dbt run --select gold
-```
+# Resource Group
+resource "azurerm_resource_group" "healthcare" {
+  name     = "${var.project_name}-rg-${var.environment}"
+  location = var.location
+}
 
-#### 4. Run Complete Pipeline
+# Storage Account (ADLS Gen2)
+resource "azurerm_storage_account" "healthcare" {
+  name                     = "${var.project_name}sa${var.environment}"
+  resource_group_name      = azurerm_resource_group.healthcare.name
+  location                 = azurerm_resource_group.healthcare.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  is_hns_enabled           = true
 
-Use the orchestration script to run the complete pipeline:
+  blob_properties {
+    versioning_enabled = true
+  }
 
-```bash
-# Run full pipeline (ingestion → quality → dbt transformations → tests)
-python src/orchestrate_pipeline.py
+  network_rules {
+    default_action = "Deny"
+    bypass         = ["AzureServices"]
+  }
+}
 
-# Skip ingestion if data already exists
-python src/orchestrate_pipeline.py --skip-ingestion
+# Containers for Medallion Architecture
+resource "azurerm_storage_container" "bronze" {
+  name                  = "bronze"
+  storage_account_name  = azurerm_storage_account.healthcare.name
+  container_access_type = "private"
+}
 
-# Skip tests
-python src/orchestrate_pipeline.py --skip-tests
-```
+resource "azurerm_storage_container" "silver" {
+  name                  = "silver"
+  storage_account_name  = azurerm_storage_account.healthcare.name
+  container_access_type = "private"
+}
 
-**dbt Models:**
+resource "azurerm_storage_container" "gold" {
+  name                  = "gold"
+  storage_account_name  = azurerm_storage_account.healthcare.name
+  container_access_type = "private"
+}
 
-- **Staging** (`models/staging/`):
-  - `stg_stock_data.sql`: Reads from bronze layer, performs initial cleaning and standardization
+# Databricks Workspace
+resource "azurerm_databricks_workspace" "healthcare" {
+  name                = "${var.project_name}-dbw-${var.environment}"
+  resource_group_name = azurerm_resource_group.healthcare.name
+  location            = azurerm_resource_group.healthcare.location
+  sku                 = "premium"
+}
 
-- **Silver** (`models/silver/`):
-  - `silver_stock_data.sql`: Cleaned and validated data with deduplication and business rules
+# Azure Event Hubs Namespace
+resource "azurerm_eventhub_namespace" "healthcare" {
+  name                = "${var.project_name}-ehns-${var.environment}"
+  location            = azurerm_resource_group.healthcare.location
+  resource_group_name = azurerm_resource_group.healthcare.name
+  sku                 = "Standard"
+  capacity            = 1
+}
 
-- **Gold** (`models/gold/`):
-  - `gold_daily_metrics.sql`: Daily aggregated metrics with moving averages and volatility indicators
-  - `gold_symbol_summary.sql`: Symbol-level summary statistics for quick analytics
+# Event Hub for Clinical Data
+resource "azurerm_eventhub" "clinical_data" {
+  name                = "clinical-events"
+  namespace_name      = azurerm_eventhub_namespace.healthcare.name
+  resource_group_name = azurerm_resource_group.healthcare.name
+  partition_count     = 4
+  message_retention   = 7
+}
 
-**dbt Tests:**
-- Run data quality tests: `dbt test`
-- Tests validate null values, logical constraints, and data freshness
+# Azure AI Search
+resource "azurerm_search_service" "healthcare" {
+  name                = "${var.project_name}-search-${var.environment}"
+  resource_group_name = azurerm_resource_group.healthcare.name
+  location            = azurerm_resource_group.healthcare.location
+  sku                 = "standard"
+}
 
-### Configuration
+# Variables
+variable "subscription_id" { type = string }
+variable "databricks_token" { type = string sensitive = true }
+variable "project_name" { default = "healthcareai" }
+variable "environment" { default = "prod" }
+variable "location" { default = "East US" }
 
-#### Database Connection (dbt)
-
-Create a `profiles.yml` file in `~/.dbt/`:
-
-```yaml
-data_lakehouse_profile:
-  target: dev
-  outputs:
-    dev:
-      type: duckdb
-      path: data_lakehouse.duckdb
-      schema: main
-```
-
-#### Customizing Data Sources
-
-Edit `src/ingest_data.py`:
-- Modify `SYMBOLS` list to change stock symbols
-- Adjust `PERIOD` for historical data range
-- Change `TICKER_INTERVAL` for data granularity (1d, 1h, 1m, etc.)
-
-## Features
-
-### ✅ Data Integrity
-- Automated quality checks before data promotion
-- Null value detection and validation
-- Data type enforcement
-- Logical consistency checks
-
-### ✅ Scalability
-- Columnar Parquet storage for efficient querying
-- DuckDB for high-performance OLAP analytics
-- Modular architecture supporting horizontal scaling
-
-### ✅ Real-Time Capabilities
-- Configurable ingestion intervals
-- Support for high-frequency data (1m, 5m intervals)
-- Efficient incremental processing
-
-### ✅ Enterprise-Ready
-- Metadata management via PostgreSQL
-- Structured logging and error handling
-- Version-controlled transformations (dbt)
-- Dockerized infrastructure for consistency
-
-## Data Flow
-
-```
-Yahoo Finance API
-    ↓
-[Ingestion Script] → data/bronze/*.parquet (Raw Data)
-    ↓
-[Quality Checks] → Pass/Fail Validation
-    ↓
-data/silver/*.parquet (Validated Data)
-    ↓
-[dbt Transformations] → Staging Models → Aggregations
-    ↓
-data/gold/ (Business-Ready Datasets)
-    ↓
-Analytics & ML Applications
-```
-
-## Best Practices
-
-1. **Always run quality checks** before promoting data to Silver
-2. **Version control** all transformations in dbt models
-3. **Monitor ingestion logs** for API errors or data anomalies
-4. **Backup metadata database** regularly for production use
-5. **Partition Parquet files** by date for better query performance at scale
-
-## Troubleshooting
-
-### PostgreSQL Connection Issues
-- Ensure Docker is running: `docker-compose ps`
-- Check logs: `docker-compose logs postgres-metadata`
-- Verify port 5432 is available
-
-### DuckDB Query Errors
-- Ensure Parquet files exist in bronze/silver paths
-- Check file permissions
-- Verify column names match dbt model expectations
-
-### API Rate Limiting
-- Yahoo Finance API may throttle requests
-- Add delays between requests in `ingest_data.py` if needed
-- Consider using API keys for higher rate limits
-
-## Pipeline Orchestration
-
-The project includes a complete pipeline orchestration script that automates the entire data flow:
-
-```bash
-python src/orchestrate_pipeline.py
-```
-
-This script:
-1. Ingests data to Bronze layer
-2. Runs quality checks
-3. Executes dbt staging transformations
-4. Executes dbt silver transformations  
-5. Executes dbt gold transformations
-6. Runs dbt data quality tests
-
-All steps are logged with detailed output and error handling.
-
-## Future Enhancements
-
-- [x] Pipeline orchestration script
-- [x] Silver and Gold layer dbt models
-- [x] Automated data quality tests
-- [ ] Dagster orchestration for automated pipelines
-- [ ] Airflow/Dagster integration for scheduling
-- [ ] Delta Lake format support for ACID transactions
-- [ ] Real-time streaming with Kafka/Pulsar
-- [ ] ML feature store integration
-- [ ] Data catalog and lineage tracking
-- [ ] Performance monitoring and alerting
-
-## License
-
-This project is designed for enterprise data engineering use cases.
-
-## Contributing
-
-For production deployments, ensure:
-- Proper secrets management (API keys, passwords)
-- Environment-specific configurations
-- Comprehensive testing of transformations
-- Monitoring and alerting setup
-
----
-
-**Built for Enterprise-Grade Financial Analytics** | High-Velocity Data Processing | Scalable & Reliable
