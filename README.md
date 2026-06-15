@@ -123,13 +123,14 @@ python src/rag/vector_indexing.py
 
 # 5. Reverse ETL sync
 python src/reverse_etl/sync_to_ehr.py
+...
 
-Compliance & Security
+## Compliance & Security
 HIPAA: All PHI encrypted, access logged, minimum necessary principle enforced
 SOC-2: Audit trails, change management, automated data quality gates
 GDPR: Right to erasure implemented via Delta Lake time travel and vacuum operations
 
-License
+## License
 Built for enterprise healthcare analytics. Not for production clinical use without proper validation.
 
 
